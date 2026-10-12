@@ -1,8 +1,11 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
+
 using namespace std;
 
-
+// Global variable to keep track of the total nodes (states) searched
+long long nodesSearched = 0;
 
 bool isSafe(int board[9][9], vector<int> ij, int dig){
     // checking vertical and horizontal line at the same time
@@ -33,45 +36,47 @@ bool isEmpty(int board[9][9]){
 }
 
 vector<int> mrv(int board[9][9]){
-    int candidates = 9;
-    int bestI = 0;
-    int bestJ = 0;
-    vector<int> ans;
+    int candidates = 10;
+    int bestI = -1;
+    int bestJ = -1;
 
     for(int i = 0; i < 9; i++){
         for(int j = 0; j < 9; j++){
-            vector<int> ij = {i, j};
-            int k = 9;
-            for(int n = 1; n < 10; n++){
-                if((board[i][j] == 0) && !isSafe(board, ij, n)){
-                    k--;
+            if (board[i][j] == 0) {
+                vector<int> ij = {i, j};
+                int k = 0;
+                for(int n = 1; n <= 9; n++){
+                    if(isSafe(board, ij, n)){
+                        k++; // count valid candidates directly
+                    }
                 }
-            }
-            if (k<candidates){
-                candidates = k;
-                bestI = i;
-                bestJ = j;
+                if (k < candidates){
+                    candidates = k;
+                    bestI = i;
+                    bestJ = j;
+                }
             }
         }
     }
-    ans.push_back(bestI);
-    ans.push_back(bestJ);
-    return ans;
+    return {bestI, bestJ};
 }
 
-int engine(int board[9][9]){
+bool engine(int board[9][9]){
+    nodesSearched++; // node counter
+
     if (!isEmpty(board)) return true;
+
     vector<int> ij = mrv(board);
+    
+    // Safety check if no valid cell was selected
+    if(ij[0] == -1 || ij[1] == -1) return false;
 
-    if(board[ij[0]][ij[1]] != 0) return engine(board);
-
-    for(int i = 1; i < 10; i++){
-        if(isSafe(board, mrv(board), i)){
+    for(int i = 1; i <= 9; i++){
+        if(isSafe(board, ij, i)){
             board[ij[0]][ij[1]] = i;
 
             if(engine(board)) return true;
-            board[ij[0]][ij[1]] = 0;
-
+            board[ij[0]][ij[1]] = 0; // backtrack
         }
     }
     return false;
@@ -89,18 +94,34 @@ void printBoard(int board[9][9]) {
 int main(){ 
     int board[9][9];
     cout << "ENTER THE PUZZLE HERE !" << endl << endl;
-    for(int i = 0;i<9;i++){
-        for(int j = 0; j<9; j++){
+    for(int i = 0; i < 9; i++){
+        for(int j = 0; j < 9; j++){
             cin >> board[i][j];
         }
     }
     cout << endl;
 
-    if (engine(board)) {
+    // Start timing execution
+    auto start = chrono::high_resolution_clock::now();
+
+    bool solved = engine(board);
+
+    // Stop timing execution
+    auto stop = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = stop - start;
+
+    if (solved) {
         cout << "SOLUTION" << endl << endl;
         printBoard(board);
     } else {
         cout << "No solution exists." << endl;
     }
+
+    // Output performance metrics
+    cout << "\n-----------------------------------" << endl;
+    cout << "Nodes searched : " << nodesSearched << endl;
+    cout << "Time consumed  : " << duration.count() << " seconds" << endl;
+    cout << "-----------------------------------" << endl;
+
     return 0;
 }
